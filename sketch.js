@@ -18,15 +18,16 @@ const VOLCANO_RADIUS = 6;
 // Variabile per memorizzare il vulcano su cui si trova il mouse (per il tooltip)
 let hoveredVolcano = null;
 
+// Variabili per la posizione e dimensione della mappa calibrate sulla finestra
+let mapX, mapY, mapWidth, mapHeight;
+
 // --- Funzione Preload (Caricamento Asset) ---
 function preload() {
   // Carica il file CSV dei vulcani
-  // Il nome del file deve corrispondere a quello caricato: "volcanoes-2025-10-27 - Es.3 - Original Data.csv"
-  // L'opzione "header" indica che la prima riga contiene i nomi delle colonne
   table = loadTable("volcanoes-2025-10-27 - Es.3 - Original Data.csv", "csv", "header");
 
-  // Carica l'immagine del planisfero
-  worldMapImage = loadImage("world_map_dark_gray.png");
+  // Carica l'immagine del planisfero (AGGIORNATO CON IL NUOVO NOME FILE)
+  worldMapImage = loadImage("mappamondo1.png");
 }
 
 // --- Funzione Setup (Configurazione Iniziale) ---
@@ -38,40 +39,61 @@ function setup() {
   background(210, 180, 140); // Colore tan/marrone chiaro
 
   // Imposta i limiti di latitudine e longitudine.
-  // Usiamo i limiti estremi della Terra per mappare correttamente il planisfero.
-  // Si potrebbero anche calcolare i limiti dai dati, ma -180/180 e -90/90 sono più generici.
   minLon = -180;
   maxLon = 180;
   minLat = -90;
   maxLat = 90;
 
-  // Se i dati hanno le colonne Elevation (m) e TypeCategory che contengono spazi,
-  // dobbiamo usare i nomi esatti.
-  // Nel file .csv le colonne sono: "Latitude", "Longitude", "Elevation (m)", "Type", "TypeCategory", "Status", "Last Known Eruption", "Volcano Name", "Country".
   console.log("Dati caricati. Numero di righe:", table.getRowCount());
+}
+
+// --- Funzione per la Responsività (ricalcola le dimensioni della mappa) ---
+function calculateMapDimensions() {
+  // Margine esterno per non disegnare troppo sui bordi e lasciare spazio per la UI di p5
+  const outerMargin = 50; 
+  
+  // Calcola le dimensioni massime disponibili per la mappa
+  const availableWidth = windowWidth - 2 * outerMargin;
+  const availableHeight = windowHeight - 2 * outerMargin;
+
+  // Proporzioni della mappa del mondo (1:2 - 360 gradi longitudine / 180 gradi latitudine)
+  // L'immagine del planisfero è rettangolare, ma il rapporto geografico è 2:1
+  const mapRatio = 2.0; 
+
+  if (availableWidth / availableHeight > mapRatio) {
+    // Limitato dall'altezza
+    mapHeight = availableHeight;
+    mapWidth = availableHeight * mapRatio;
+  } else {
+    // Limitato dalla larghezza
+    mapWidth = availableWidth;
+    mapHeight = availableWidth / mapRatio;
+  }
+
+  // Centra la mappa
+  mapX = (windowWidth - mapWidth) / 2;
+  mapY = (windowHeight - mapHeight) / 2;
 }
 
 // --- Funzione Disegno (Loop Principale) ---
 function draw() {
+  // Ricalcola le dimensioni della mappa in ogni ciclo (per gestire resize dinamico)
+  calculateMapDimensions();
+
   // Ridisegna lo sfondo ad ogni ciclo per pulire il canvas
   background(210, 180, 140);
 
   // Inizializza la variabile del vulcano hoverato a null
   hoveredVolcano = null;
-
-  // Variabili per la posizione e dimensione del planisfero
-  const mapWidth = windowWidth * 0.66; // Circa 2/3 della windowWidth
-  const mapHeight = mapWidth * (worldMapImage.height / worldMapImage.width); // Mantiene le proporzioni
-  const mapX = (windowWidth - mapWidth) / 2;
-  const mapY = (windowHeight - mapHeight) / 2;
-
-  // --- Disegno del Planisfero ---
+  
+  // --- 1. Disegno del Planisfero ---
+  // L'immagine viene deformata leggermente per adattarsi esattamente al rapporto 2:1 delle coordinate reali
   image(worldMapImage, mapX, mapY, mapWidth, mapHeight);
 
   // Rimuove il bordo (stroke) per i cerchi dei vulcani
   noStroke();
 
-  // Cicla su tutte le righe dei dati
+  // --- 2. Disegno dei Vulcani ---
   for (let i = 0; i < table.getRowCount(); i++) {
     const row = table.getRow(i);
 
@@ -86,10 +108,9 @@ function draw() {
     const status = row.getString("Status");
     const lastEruption = row.getString("Last Known Eruption");
 
-    // --- Mappatura delle Coordinate ---
+    // --- Mappatura delle Coordinate (CORRETTA) ---
 
     // Mappa la longitudine (lon) sulle coordinate X del canvas
-    // Usiamo 'mapX' e 'mapWidth' per limitare il disegno all'area del planisfero
     const x = map(lon, minLon, maxLon, mapX, mapX + mapWidth);
 
     // Mappa la latitudine (lat) sulle coordinate Y del canvas.
@@ -101,18 +122,14 @@ function draw() {
 
     if (elevation >= 0) {
       // Vulcani con altezza positiva (sfumatura da rosso chiaro a rosso scuro)
-      // La funzione 'lerpColor' calcola un colore intermedio tra due colori
       const lightRed = color(255, 160, 122); // Corallo chiaro
       const darkRed = color(139, 0, 0);       // Rosso scuro
-      // Mappiamo l'altitudine tra 0 e maxElevation (7000m)
       const colorRatio = map(elevation, 0, maxElevation, 0, 1, true); // true per clamp
       volcanoColor = lerpColor(lightRed, darkRed, colorRatio);
     } else {
       // Vulcani con altezza negativa (sfumatura da blu chiaro a blu scuro)
-      // Mappiamo l'altitudine tra minElevation (-6000m) e 0
       const lightBlue = color(173, 216, 230); // Azzurro chiaro
       const darkBlue = color(0, 31, 63);      // Blu scuro (quasi navy)
-      // Il rapporto deve andare da 0 (per -6000m) a 1 (per 0m)
       const colorRatio = map(elevation, minElevation, 0, 0, 1, true);
       volcanoColor = lerpColor(darkBlue, lightBlue, colorRatio);
     }
@@ -125,10 +142,9 @@ function draw() {
 
     if (d < VOLCANO_RADIUS / 2) {
       // Se il mouse è sopra il cerchio
-      // 1. Cambia il colore del cerchio a un giallo brillante per feedback
-      fill(255, 255, 0);
+      fill(255, 255, 0); // Giallo brillante per feedback
 
-      // 2. Salva tutti i dati necessari per il tooltip
+      // Salva tutti i dati necessari per il tooltip
       hoveredVolcano = {
         x: x,
         y: y,
@@ -141,7 +157,6 @@ function draw() {
         lastEruption: lastEruption
       };
       
-      // Impedisce che il cursore torni "default" al di fuori del loop di disegno
       cursor('pointer');
 
     }
@@ -150,34 +165,31 @@ function draw() {
     ellipse(x, y, VOLCANO_RADIUS, VOLCANO_RADIUS);
   }
 
-  // --- TOOLTIP (Disegnato per ultimo per essere in primo piano) ---
+  // --- 3. TOOLTIP (Disegnato per ultimo) ---
   if (hoveredVolcano) {
-    // Testo del tooltip formattato
     const tooltipContent = [
       { text: hoveredVolcano.name, bold: true },
       { label: "Country:", text: hoveredVolcano.country },
-      // L'altitudine deve essere mostrata direttamente con 'm' accanto
       { label: "", text: `${hoveredVolcano.elevation}m` }, 
       { label: "Type:", text: hoveredVolcano.type },
       { label: "Type category:", text: hoveredVolcano.typeCategory },
       { label: "Status:", text: hoveredVolcano.status },
       { label: "Last known eruption:", text: hoveredVolcano.lastEruption }
     ];
-
-    // Chiama la funzione per disegnare il tooltip
     drawTooltip(hoveredVolcano.x, hoveredVolcano.y, tooltipContent);
-
   } else {
-    // Nessun vulcano è stato hoverato, torna al cursore normale
     cursor('default');
   }
+  
+  // --- 4. Disegno degli elementi UI (Titolo e Legenda) in p5.js ---
+  drawUIElements();
 }
 
 // --- Funzione per la Responsività ---
 function windowResized() {
   // Ricalcola le dimensioni del canvas quando la finestra viene ridimensionata
   resizeCanvas(windowWidth, windowHeight);
-  // Il draw() loop gestirà il riposizionamento del planisfero e dei vulcani
+  // calculateMapDimensions() è chiamato in draw()
 }
 
 // --- Funzione Tooltip (Disegna la scheda informativa) ---
@@ -196,7 +208,6 @@ function drawTooltip(x, y, content) {
         let currentText = (item.label || "") + (item.text || "");
         let currentWidth = textWidth(currentText);
         if (item.bold) {
-            // Aggiungo un po' di margine se è in grassetto
             currentWidth += 10;
         }
         if (currentWidth > panelWidth) {
@@ -224,7 +235,7 @@ function drawTooltip(x, y, content) {
     }
 
     // --- Disegna il pannello di sfondo (giallo) ---
-    fill(255, 255, 100); // Sfondo giallo chiaro come richiesto
+    fill(255, 255, 100); // Sfondo giallo chiaro
     rect(panelX, panelY, panelWidth, panelHeight, cornerRadius);
 
     // --- Disegna il testo (nero) ---
@@ -238,16 +249,13 @@ function drawTooltip(x, y, content) {
         const lineX = panelX + padding;
         const lineY = currentY;
 
-        // Se è in grassetto, usa il font grassetto
         if (item.bold) {
             textStyle(BOLD);
             text(item.text, lineX, lineY);
         } else {
             textStyle(NORMAL);
-            // Disegna l'etichetta (es: "Country:")
             text(item.label || "", lineX, lineY);
             
-            // Disegna il valore, posizionato subito dopo l'etichetta
             const labelWidth = textWidth(item.label || "");
             text(item.text, lineX + labelWidth, lineY);
         }
@@ -257,4 +265,91 @@ function drawTooltip(x, y, content) {
     
     // Ripristina lo stile del testo
     textStyle(NORMAL);
+}
+
+// --- Funzione per disegnare gli elementi UI con p5.js ---
+function drawUIElements() {
+    // --- 4a. TITOLO CENTRALE (sopra) ---
+    const titleText = "Volcanoes on the Earth";
+    const titlePadding = 15;
+    const titleHeight = 30 + 2 * titlePadding; // Calcola altezza del rettangolo
+    
+    // Disegna il rettangolo scuro per il titolo
+    fill(0, 0, 0, 100); // Nero semi-trasparente
+    noStroke();
+    // Lo disegniamo sopra il canvas a tutta larghezza
+    rect(0, 0, windowWidth, titleHeight, 0, 0, 10, 10); // Angoli arrotondati in basso
+
+    // Disegna il testo del titolo
+    fill(255); // Bianco
+    textSize(24);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    text(titleText, windowWidth / 2, titleHeight / 2);
+
+
+    // --- 4b. LEGENDA ALTITUDINE (a destra) ---
+    const legendWidth = 150;
+    const legendHeight = 110;
+    const legendX = windowWidth - legendWidth - 10;
+    const legendY = 50 + titleHeight; // Sotto il titolo con un piccolo margine
+    
+    // Disegna il pannello di sfondo
+    fill(139, 69, 19, 180); // Marrone scuro semi-trasparente
+    rect(legendX, legendY, legendWidth, legendHeight, 10); // Angoli arrotondati
+
+    // Titolo Legenda
+    fill(255); // Bianco
+    textSize(16);
+    textAlign(CENTER, TOP);
+    textStyle(BOLD);
+    text("Elevation", legendX + legendWidth / 2, legendY + 10);
+    
+    // Barra del Colore
+    const barY = legendY + 35;
+    const barHeight = 20;
+    const halfBarWidth = legendWidth * 0.45; // Lascia un po' di margine
+
+    // Disegno la sfumatura di colore (dal blu al rosso)
+    noStroke();
+    for (let i = 0; i <= legendWidth; i++) {
+        let xPos = legendX + i;
+        let c;
+        let elevationValue;
+
+        if (i < legendWidth / 2) {
+            // Lato sinistro (Blu, altitudine negativa)
+            elevationValue = map(i, 0, legendWidth / 2, minElevation, 0);
+            const lightBlue = color(173, 216, 230);
+            const darkBlue = color(0, 31, 63);
+            const ratio = map(i, 0, legendWidth / 2, 0, 1);
+            c = lerpColor(darkBlue, lightBlue, ratio);
+        } else {
+            // Lato destro (Rosso, altitudine positiva)
+            elevationValue = map(i, legendWidth / 2, legendWidth, 0, maxElevation);
+            const lightRed = color(255, 160, 122);
+            const darkRed = color(139, 0, 0);
+            const ratio = map(i, legendWidth / 2, legendWidth, 0, 1);
+            c = lerpColor(lightRed, darkRed, ratio);
+        }
+
+        stroke(c);
+        line(xPos, barY, xPos, barY + barHeight);
+    }
+    
+    // Etichette Numeriche
+    textStyle(NORMAL);
+    textSize(10);
+    textAlign(LEFT, CENTER);
+    text("-6000m", legendX + 5, barY + barHeight + 15);
+    
+    textAlign(CENTER, CENTER);
+    text("0m", legendX + legendWidth / 2, barY + barHeight + 15);
+
+    textAlign(RIGHT, CENTER);
+    text("7000m", legendX + legendWidth - 5, barY + barHeight + 15);
+
+    // Ripristina lo stile del testo
+    textStyle(NORMAL);
+    noStroke();
 }
