@@ -236,7 +236,7 @@ function drawTooltip(x, y, content) {
 
     // --- Disegna il pannello di sfondo (giallo) ---
     fill(255, 255, 100); // Sfondo giallo chiaro
-    rect(panelX, panelY, panelWidth, panelHeight, cornerRadius);
+    rect(panelX, panelY, panelWidth + 30, panelHeight, cornerRadius);
 
     // --- Disegna il testo (nero) ---
     fill(0); // Testo nero
