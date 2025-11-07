@@ -38,31 +38,35 @@ function setup() {
 
 //funzione per responsività, ricalcola dimensioni mappa
 function calculateMapDimensions() {
+            
+            const verticalMargin = 50; //margine superiore e inferiore
+            const mapLeftMargin = 80; //margine fisso a sinistra
+            const reservedRightSpace = 220; //spazio riservato a destra per legenda
+            
+            const availableWidth = windowWidth - mapLeftMargin - reservedRightSpace; //dimensioni massime disponibili per mappa
+            const availableHeight = windowHeight - 2 * verticalMargin;
 
-  const outerMargin = 50; //margine esterno per non disegnare troppo sui bordi
-  
-  const availableWidth = windowWidth - 2 * outerMargin; //dimensioni massime disponibili per mappa
-  const availableHeight = windowHeight - 2 * outerMargin;
+            const mapRatio = 2.0; //proporzioni mappa del mondo (1/2 - 360 gradi longitudine / 180 gradi latitudine)
+                                  //immagine planisfero è rettangolare, ma rapporto geografico è 2:1
 
-  const mapRatio = 2.0; //proporzioni mappa del mondo (1/2 - 360 gradi longitudine / 180 gradi latitudine)
-                        //immagine planisfero è rettangolare, ma rapporto geografico è 2:1
+            if (availableWidth / availableHeight > mapRatio) {
 
-  if (availableWidth / availableHeight > mapRatio) {
+                mapHeight = availableHeight;
 
-    mapHeight = availableHeight;
-    mapWidth = availableHeight * mapRatio;
+                mapWidth = availableHeight * mapRatio;
 
-  } else {
+            } else {
 
-    mapWidth = availableWidth;
-    mapHeight = availableWidth / mapRatio;
+                mapWidth = availableWidth;
 
-  }
+                mapHeight = availableWidth / mapRatio;
 
-  mapX = (windowWidth - mapWidth) / 2; //mappa sta a centro
-  mapY = (windowHeight - mapHeight) / 2;
+            }
 
-}
+            mapX = mapLeftMargin; //coordinata X mappa
+            mapY = (windowHeight - mapHeight) / 2 + 20; //coordinata Y mappa
+
+        }
 
 function draw() {
 
@@ -89,7 +93,7 @@ function draw() {
     const status = row.getString("Status");
     const lastEruption = row.getString("Last Known Eruption");
 
-    const x = map(lon, minLon, maxLon, mapX, mapX + mapWidth); //converto coordinate geografiche in coordinate pixel con funzione map
+    const x = map(lon, minLon, maxLon, mapX, mapX - 18 + mapWidth); //converto coordinate geografiche in coordinate pixel con funzione map
     const y = map(lat, minLat, maxLat, mapY + mapHeight, mapY); //asse Y di p5.js è invertito (0 in alto), quindi invertiamo minLat e maxLat
 
     let volcanoColor;
@@ -140,6 +144,8 @@ function draw() {
     ellipse(x, y, volcano_radius, volcano_radius);
   }
 
+  drawUIElements(); //diesegno titolo ed legenda elevation
+  
   //tooltip
   if (hoveredVolcano) {
 
@@ -160,8 +166,6 @@ function draw() {
     cursor('default'); //se non sopra vulcano, reimposta icona mouse normale
 
   }
-  
-  drawUIElements(); //diesegno titolo ed elevation
 
 }
 
