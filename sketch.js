@@ -1,104 +1,85 @@
-// --- Variabili Globali ---
-// Variabile per i dati dei vulcani
 let table;
 
-// Variabile per l'immagine del planisfero
 let worldMapImage;
 
-// Variabili per i limiti delle coordinate (per il mapping)
-let minLon, maxLon, minLat, maxLat;
+let minLon, maxLon, minLat, maxLat; //variabili globali su latitudine e longitudine minima e massima
 
-// Limiti di altitudine (elevation) per la scala di colore
-let minElevation = -6000; // Valore minimo stimato per l'altitudine negativa
-let maxElevation = 7000;  // Valore massimo stimato per l'altitudine positiva
+let minElevation = -6000; //limiti altitudine (elevation) per scala di colore
+let maxElevation = 7000;
 
-// Dimensione fissa del raggio dei cerchi
-const VOLCANO_RADIUS = 6;
+const volcano_radius = 6; //dimensione raggio cerchi
 
-// Variabile per memorizzare il vulcano su cui si trova il mouse (per il tooltip)
-let hoveredVolcano = null;
+let hoveredVolcano = null; //x memorizzare vulcano su cui si trova mouse
 
-// Variabili per la posizione e dimensione della mappa calibrate sulla finestra
-let mapX, mapY, mapWidth, mapHeight;
+let mapX, mapY, mapWidth, mapHeight; //posizione e dimensione mappa proporzionate alla finestra
 
-// --- Funzione Preload (Caricamento Asset) ---
 function preload() {
-  // Carica il file CSV dei vulcani
+
   table = loadTable("volcanoes-2025-10-27 - Es.3 - Original Data.csv", "csv", "header");
 
-  // Carica l'immagine del planisfero (AGGIORNATO CON IL NUOVO NOME FILE)
   worldMapImage = loadImage("mappamondo1.png");
+
 }
 
-// --- Funzione Setup (Configurazione Iniziale) ---
 function setup() {
-  // Crea il canvas con ampiezza e altezza pari alla finestra del browser
+
   createCanvas(windowWidth, windowHeight);
 
-  // Imposta il colore di sfondo (marrone chiaro, come richiesto)
-  background(210, 180, 140); // Colore tan/marrone chiaro
+  background("#4b2a1cff");
 
-  // Imposta i limiti di latitudine e longitudine.
-  minLon = -180;
+  minLon = -180; //limiti di latitudine e longitudine
   maxLon = 180;
   minLat = -90;
   maxLat = 90;
 
-  console.log("Dati caricati. Numero di righe:", table.getRowCount());
+  console.log("Dati caricati, numero di righe:", table.getRowCount());
+
 }
 
-// --- Funzione per la Responsività (ricalcola le dimensioni della mappa) ---
+//funzione per responsività, ricalcola dimensioni mappa
 function calculateMapDimensions() {
-  // Margine esterno per non disegnare troppo sui bordi e lasciare spazio per la UI di p5
-  const outerMargin = 50; 
+
+  const outerMargin = 50; //margine esterno per non disegnare troppo sui bordi
   
-  // Calcola le dimensioni massime disponibili per la mappa
-  const availableWidth = windowWidth - 2 * outerMargin;
+  const availableWidth = windowWidth - 2 * outerMargin; //dimensioni massime disponibili per mappa
   const availableHeight = windowHeight - 2 * outerMargin;
 
-  // Proporzioni della mappa del mondo (1:2 - 360 gradi longitudine / 180 gradi latitudine)
-  // L'immagine del planisfero è rettangolare, ma il rapporto geografico è 2:1
-  const mapRatio = 2.0; 
+  const mapRatio = 2.0; //proporzioni mappa del mondo (1/2 - 360 gradi longitudine / 180 gradi latitudine)
+                        //immagine planisfero è rettangolare, ma rapporto geografico è 2:1
 
   if (availableWidth / availableHeight > mapRatio) {
-    // Limitato dall'altezza
+
     mapHeight = availableHeight;
     mapWidth = availableHeight * mapRatio;
+
   } else {
-    // Limitato dalla larghezza
+
     mapWidth = availableWidth;
     mapHeight = availableWidth / mapRatio;
+
   }
 
-  // Centra la mappa
-  mapX = (windowWidth - mapWidth) / 2;
+  mapX = (windowWidth - mapWidth) / 2; //mappa sta a centro
   mapY = (windowHeight - mapHeight) / 2;
+
 }
 
-// --- Funzione Disegno (Loop Principale) ---
 function draw() {
-  // Ricalcola le dimensioni della mappa in ogni ciclo (per gestire resize dinamico)
-  calculateMapDimensions();
 
-  // Ridisegna lo sfondo ad ogni ciclo per pulire il canvas
-  background(210, 180, 140);
+  calculateMapDimensions(); //ricalcola dimensioni mappa in ogni ciclo, per responsiveness
 
-  // Inizializza la variabile del vulcano hoverato a null
-  hoveredVolcano = null;
+  background("#713f2cff"); //ridisegna sfondo a ogni ciclo
+
+  hoveredVolcano = null; //variabile per memorizzare punto su cui mouse passa sopra
   
-  // --- 1. Disegno del Planisfero ---
-  // L'immagine viene deformata leggermente per adattarsi esattamente al rapporto 2:1 delle coordinate reali
   image(worldMapImage, mapX, mapY, mapWidth, mapHeight);
 
-  // Rimuove il bordo (stroke) per i cerchi dei vulcani
-  noStroke();
-
-  // --- 2. Disegno dei Vulcani ---
+  //ciclo per disegnare cerchi
   for (let i = 0; i < table.getRowCount(); i++) {
+
     const row = table.getRow(i);
 
-    // Estraggo i dati della riga corrente
-    const lat = parseFloat(row.getString("Latitude"));
+    const lat = parseFloat(row.getString("Latitude")); //parseFloat() arrotonda numero, leva virgola
     const lon = parseFloat(row.getString("Longitude"));
     const elevation = parseFloat(row.getString("Elevation (m)"));
     const name = row.getString("Volcano Name");
@@ -108,44 +89,36 @@ function draw() {
     const status = row.getString("Status");
     const lastEruption = row.getString("Last Known Eruption");
 
-    // --- Mappatura delle Coordinate (CORRETTA) ---
+    const x = map(lon, minLon, maxLon, mapX, mapX + mapWidth); //converto coordinate geografiche in coordinate pixel con funzione map
+    const y = map(lat, minLat, maxLat, mapY + mapHeight, mapY); //asse Y di p5.js è invertito (0 in alto), quindi invertiamo minLat e maxLat
 
-    // Mappa la longitudine (lon) sulle coordinate X del canvas
-    const x = map(lon, minLon, maxLon, mapX, mapX + mapWidth);
-
-    // Mappa la latitudine (lat) sulle coordinate Y del canvas.
-    // L'asse Y di p5.js è invertito (0 in alto), quindi invertiamo minLat e maxLat.
-    const y = map(lat, minLat, maxLat, mapY + mapHeight, mapY);
-
-    // --- Mappatura dei Colori (Elevation) ---
     let volcanoColor;
 
-    if (elevation >= 0) {
-      // Vulcani con altezza positiva (sfumatura da rosso chiaro a rosso scuro)
-      const lightRed = color(255, 160, 122); // Corallo chiaro
-      const darkRed = color(139, 0, 0);       // Rosso scuro
-      const colorRatio = map(elevation, 0, maxElevation, 0, 1, true); // true per clamp
-      volcanoColor = lerpColor(lightRed, darkRed, colorRatio);
-    } else {
-      // Vulcani con altezza negativa (sfumatura da blu chiaro a blu scuro)
-      const lightBlue = color(173, 216, 230); // Azzurro chiaro
-      const darkBlue = color(0, 31, 63);      // Blu scuro (quasi navy)
-      const colorRatio = map(elevation, minElevation, 0, 0, 1, true);
-      volcanoColor = lerpColor(darkBlue, lightBlue, colorRatio);
+    //mappatura colori, basata su altitudine (vd. lgenda)
+    if (elevation >= 0) { //vulcani con altezza positiva (sfumatura da rosso chiaro a rosso scuro)
+
+      const lightRed = color("#ff9b7cff");
+      const darkRed = color("#8c0a0aff");
+      const colorRatio = map(elevation, 0, maxElevation, 0, 1, true); //true costringe valore rimappato entro l'intervallo 0 - 1
+      volcanoColor = lerpColor(lightRed, darkRed, colorRatio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
+
+    } else { //vulcani con altezza negativa (sfumatura da blu chiaro a blu scuro)
+
+      const lightBlue = color("#7cd1ffff");
+      const darkBlue = color("#221ba0ff");
+      const colorRatio = map(elevation, minElevation, 0, 0, 1, true); //true costringe valore rimappato entro l'intervallo 0 - 1
+      volcanoColor = lerpColor(darkBlue, lightBlue, colorRatio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
+      
     }
 
-    // Imposta il colore di riempimento
-    fill(volcanoColor);
-
-    // --- Interazione con il Mouse ---
+    //interazione minima con mouse quando vado sul singolo pallino, calcolo distanza tra posizione mouse e centro pallino
     const d = dist(mouseX, mouseY, x, y);
 
-    if (d < VOLCANO_RADIUS / 2) {
-      // Se il mouse è sopra il cerchio
-      fill(255, 255, 0); // Giallo brillante per feedback
+    if (d < volcano_radius / 2) { //se mouse sopra cerchio
 
-      // Salva tutti i dati necessari per il tooltip
+      //salva tutti dati necessari per tooltip
       hoveredVolcano = {
+
         x: x,
         y: y,
         name: name,
@@ -155,19 +128,22 @@ function draw() {
         typeCategory: typeCategory,
         status: status,
         lastEruption: lastEruption
+
       };
       
-      cursor('pointer');
+      cursor('pointer'); //cambia icona mouse in indice alzato
 
     }
     
-    // Disegna il cerchio
-    ellipse(x, y, VOLCANO_RADIUS, VOLCANO_RADIUS);
+    noStroke(); //cerchio vulcani
+    fill(volcanoColor);
+    ellipse(x, y, volcano_radius, volcano_radius);
   }
 
-  // --- 3. TOOLTIP (Disegnato per ultimo) ---
+  //tooltip
   if (hoveredVolcano) {
-    const tooltipContent = [
+
+    const tooltipContent = [ //testo tooltip, mostra nome, country, altitude, type, type cateogry, status, last known eruption
       { text: hoveredVolcano.name, bold: true },
       { label: "Country:", text: hoveredVolcano.country },
       { label: "", text: `${hoveredVolcano.elevation}m` }, 
@@ -176,9 +152,13 @@ function draw() {
       { label: "Status:", text: hoveredVolcano.status },
       { label: "Last known eruption:", text: hoveredVolcano.lastEruption }
     ];
-    drawTooltip(hoveredVolcano.x, hoveredVolcano.y, tooltipContent);
+
+    drawTooltip(hoveredVolcano.x, hoveredVolcano.y, tooltipContent); //disegna tooltip
+
   } else {
-    cursor('default');
+
+    cursor('default'); //se non sopra vulcano, reimposta icona mouse normale
+
   }
   
   // --- 4. Disegno degli elementi UI (Titolo e Legenda) in p5.js ---
@@ -217,13 +197,13 @@ function drawTooltip(x, y, content) {
     panelWidth += padding * 2;
 
     // Posizione del pannello (a destra del cerchio)
-    let panelX = x + VOLCANO_RADIUS / 2 + 5;
+    let panelX = x + volcano_radius / 2 + 5;
     let panelY = y - panelHeight / 2; // Centrato verticalmente rispetto al punto
 
     // Adatta la posizione se il pannello esce dai bordi destri o inferiori
     if (panelX + panelWidth > width) {
         // Se esce a destra, sposta a sinistra del cerchio
-        panelX = x - VOLCANO_RADIUS / 2 - 5 - panelWidth;
+        panelX = x - volcano_radius / 2 - 5 - panelWidth;
     }
     if (panelY + panelHeight > height) {
         // Se esce in basso, alza il pannello
@@ -320,15 +300,15 @@ function drawUIElements() {
         if (i < legendWidth / 2) {
             // Lato sinistro (Blu, altitudine negativa)
             elevationValue = map(i, 0, legendWidth / 2, minElevation, 0);
-            const lightBlue = color(173, 216, 230);
-            const darkBlue = color(0, 31, 63);
+            const lightBlue = color("#7cd1ffff");
+            const darkBlue = color("#221ba0ff");
             const ratio = map(i, 0, legendWidth / 2, 0, 1);
             c = lerpColor(darkBlue, lightBlue, ratio);
         } else {
             // Lato destro (Rosso, altitudine positiva)
             elevationValue = map(i, legendWidth / 2, legendWidth, 0, maxElevation);
-            const lightRed = color(255, 160, 122);
-            const darkRed = color(139, 0, 0);
+            const lightRed = color("#ff9b7cff");
+            const darkRed = color("#8c0a0aff");
             const ratio = map(i, legendWidth / 2, legendWidth, 0, 1);
             c = lerpColor(lightRed, darkRed, ratio);
         }
