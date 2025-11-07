@@ -161,164 +161,174 @@ function draw() {
 
   }
   
-  // --- 4. Disegno degli elementi UI (Titolo e Legenda) in p5.js ---
-  drawUIElements();
+  drawUIElements(); //diesegno titolo ed elevation
+
 }
 
-// --- Funzione per la Responsività ---
-function windowResized() {
-  // Ricalcola le dimensioni del canvas quando la finestra viene ridimensionata
-  resizeCanvas(windowWidth, windowHeight);
-  // calculateMapDimensions() è chiamato in draw()
+function windowResized() { //funzione responsiveness
+
+  resizeCanvas(windowWidth, windowHeight); //ricalcola dimensioni canvas quando finestra ridimensionata
+
 }
 
-// --- Funzione Tooltip (Disegna la scheda informativa) ---
-function drawTooltip(x, y, content) {
-    // Variabili per l'aspetto del tooltip
+function drawTooltip(x, y, content) { //tooltip giallo
+
     const padding = 10;
-    const lineHeight = 18;
+    const lineHeight = 18; //altezza riga
     const cornerRadius = 5;
 
-    // Calcola l'altezza del pannello in base al numero di righe
-    const panelHeight = content.length * lineHeight + padding * 2;
+    const panelHeight = content.length * lineHeight + padding * 2; //calcola altezza tooltip in base a numero righe
     let panelWidth = 0;
 
-    // Trova la larghezza massima del testo per dimensionare correttamente il pannello
+    //ciclo trova larghezza massima testo, x dimensionare correttamente pannello
     for (const item of content) {
-        let currentText = (item.label || "") + (item.text || "");
-        let currentWidth = textWidth(currentText);
+
+        let currentText = (item.label || "") + (item.text || ""); //combina etichetta (es. "Country:") e testo (es. "Canada") in unica stringa
+                                                                  // || "" (or vuoto) assicura che se item.label o item.text non esistono (es. vulcano Unnamed), venga usata stringa vuota
+        let currentWidth = textWidth(currentText); //textWidth() misura larghezza in pixel stringa currentText sul canvas, usando dimensione font e stile correnti
+
         if (item.bold) {
-            currentWidth += 10;
+
+            currentWidth += 10; //se elemento corrente in grassetto (item.bold vero), aggiunto piccolo margine di 10px a larghezza
+
         }
-        if (currentWidth > panelWidth) {
-            panelWidth = currentWidth;
+        
+        if (currentWidth > panelWidth) { //blocco verifica se larghezza testo corrente > larghezza massima finora trovata (panelWidth)
+
+            panelWidth = currentWidth; //se si, panelWidth aggiornata a nuovo valore massimo
+                                       //a termine ciclo, panelWidth conterrà larghezza in pixel riga di testo più lunga del tooltip
         }
     }
-    panelWidth += padding * 2;
 
-    // Posizione del pannello (a destra del cerchio)
-    let panelX = x + volcano_radius / 2 + 5;
-    let panelY = y - panelHeight / 2; // Centrato verticalmente rispetto al punto
+    panelWidth += padding * 2; //a larghezza massima testo, viene aggiunto padding * 2, x avere margine interno (padding) tra testo e bordi sinistro e destro del tooltip
 
-    // Adatta la posizione se il pannello esce dai bordi destri o inferiori
+    let panelX = x + volcano_radius + 5; //posizione pannello
+    let panelY = y - panelHeight / 2; //centrato verticalmente rispetto al punto
+
+    //adatta posizione tooltip se esce da bordi destri o inferiori
     if (panelX + panelWidth > width) {
-        // Se esce a destra, sposta a sinistra del cerchio
-        panelX = x - volcano_radius / 2 - 5 - panelWidth;
-    }
-    if (panelY + panelHeight > height) {
-        // Se esce in basso, alza il pannello
-        panelY = height - panelHeight - 5;
-    }
-    if (panelY < 0) {
-        // Se esce in alto, abbassa il pannello
-        panelY = 5;
+
+      panelX = x - volcano_radius / 2 - 5 - panelWidth; //se esce a destra, sposta a sinistra del cerchio
+
     }
 
-    // --- Disegna il pannello di sfondo (giallo) ---
-    fill(255, 255, 100); // Sfondo giallo chiaro
+    if (panelY + panelHeight > height) {
+
+        panelY = height - panelHeight - 5; //se esce in basso, alza tooltip
+
+    }
+
+    if (panelY < 0) {
+
+      panelY = 50; //se esce in alto, abbassa tooltip
+
+    }
+
+    fill("#ffff4cff");
     rect(panelX, panelY, panelWidth + 30, panelHeight, cornerRadius);
 
-    // --- Disegna il testo (nero) ---
-    fill(0); // Testo nero
+    fill("#000000ff");
     textSize(12);
     textAlign(LEFT, TOP);
     
-    let currentY = panelY + padding;
+    let currentY = panelY + padding; //testo 1^ riga inizia da altezza Y + padding
 
     for (const item of content) {
-        const lineX = panelX + padding;
+
+        const lineX = panelX + padding; //posizione X e Y testo
         const lineY = currentY;
 
-        if (item.bold) {
+        if (item.bold) { //se array const tooltipContent[] ha bold:true per quell'item
+
             textStyle(BOLD);
             text(item.text, lineX, lineY);
-        } else {
-            textStyle(NORMAL);
-            text(item.label || "", lineX, lineY);
-            
-            const labelWidth = textWidth(item.label || "");
-            text(item.text, lineX + labelWidth, lineY);
-        }
 
-        currentY += lineHeight;
+        } else {
+
+            textStyle(NORMAL);
+            text(item.label || "", lineX, lineY); //scrive etichetta tooltip (es. Country:)
+            
+            const labelWidth = textWidth(item.label || ""); //larghezza in px etichetta appena disegnata
+            text(item.text, lineX + labelWidth, lineY); //disegna testo (item.text - es. "Stratovolcano") non a lineX, ma a lineX + labelWidth, così posiziona scritta dopo fine etichetta (es. type:Stratovolcano)
+        
+          }
+
+        currentY += lineHeight; //dopo disegnato 1 riga, currentY aumentata di lineHeight (altezza riga) x prossima riga
+
     }
     
-    // Ripristina lo stile del testo
-    textStyle(NORMAL);
+    textStyle(NORMAL); //ripristina stile testo
+
 }
 
-// --- Funzione per disegnare gli elementi UI con p5.js ---
+//funzione che disegna elementi UI
 function drawUIElements() {
-    // --- 4a. TITOLO CENTRALE (sopra) ---
-    const titleText = "Volcanoes on the Earth";
-    const titlePadding = 15;
-    const titleHeight = 30 + 2 * titlePadding; // Calcola altezza del rettangolo
-    
-    // Disegna il rettangolo scuro per il titolo
-    fill(0, 0, 0, 100); // Nero semi-trasparente
-    noStroke();
-    // Lo disegniamo sopra il canvas a tutta larghezza
-    rect(0, 0, windowWidth, titleHeight, 0, 0, 10, 10); // Angoli arrotondati in basso
 
-    // Disegna il testo del titolo
-    fill(255); // Bianco
+    const titleText = "Volcanoes on the Earth"; //titolo
+    const titlePadding = 15;
+    const titleHeight = 30 + 2 * titlePadding; //calcola altezza rettangolo
+    
+    //rettangolo marrone scuro titolo
+    fill(0, 0, 0, 100); //nero semi-trasparente
+    noStroke();
+    rect(0, 0, windowWidth, titleHeight, 0, 0, 10, 10); //angoli arrotondati in basso
+
+    fill("#ffffff"); //titolo
     textSize(24);
     textAlign(CENTER, CENTER);
     textStyle(BOLD);
     text(titleText, windowWidth / 2, titleHeight / 2);
 
-
-    // --- 4b. LEGENDA ALTITUDINE (a destra) ---
-    const legendWidth = 150;
+    const legendWidth = 150; //legenda elevation
     const legendHeight = 110;
-    const legendX = windowWidth - legendWidth - 10;
-    const legendY = 50 + titleHeight; // Sotto il titolo con un piccolo margine
+    const legendX = windowWidth - legendWidth - 40;
+    const legendY = 25 + titleHeight; //sotto titolo con piccolo margine
     
-    // Disegna il pannello di sfondo
-    fill(139, 69, 19, 180); // Marrone scuro semi-trasparente
-    rect(legendX, legendY, legendWidth, legendHeight, 10); // Angoli arrotondati
+    fill("#412f09ff"); //sfondo legenda
+    rect(legendX, legendY, legendWidth, legendHeight, 10); //angoli arrotondati
 
-    // Titolo Legenda
-    fill(255); // Bianco
+    fill("#ffffff"); //titolo legenda
     textSize(16);
     textAlign(CENTER, TOP);
     textStyle(BOLD);
     text("Elevation", legendX + legendWidth / 2, legendY + 10);
     
-    // Barra del Colore
-    const barY = legendY + 35;
+    const barY = legendY + 35; //rettangolo sfumato (bar)
     const barHeight = 20;
-    const halfBarWidth = legendWidth * 0.45; // Lascia un po' di margine
+    const halfBarWidth = legendWidth * 0.45;
 
-    // Disegno la sfumatura di colore (dal blu al rosso)
     noStroke();
-    for (let i = 0; i <= legendWidth; i++) {
+    
+    for (let i = 0; i <= legendWidth; i++) { //sfumatura rettangolo legenda
+
         let xPos = legendX + i;
         let c;
         let elevationValue;
 
-        if (i < legendWidth / 2) {
-            // Lato sinistro (Blu, altitudine negativa)
-            elevationValue = map(i, 0, legendWidth / 2, minElevation, 0);
+        if (i < legendWidth / 2) { //sfumatura blu
+            
+            elevationValue = map(i, 0, legendWidth / 2, minElevation, 0); //mappa entro intervallo tra -6000 - 0
             const lightBlue = color("#7cd1ffff");
             const darkBlue = color("#221ba0ff");
-            const ratio = map(i, 0, legendWidth / 2, 0, 1);
-            c = lerpColor(darkBlue, lightBlue, ratio);
-        } else {
-            // Lato destro (Rosso, altitudine positiva)
-            elevationValue = map(i, legendWidth / 2, legendWidth, 0, maxElevation);
+            const ratio = map(i, 0, legendWidth / 2, 0, 1); //mappa entro intervallo 0 - 1
+            c = lerpColor(darkBlue, lightBlue, ratio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
+
+        } else { //sfumatura rossa
+            
+            elevationValue = map(i, legendWidth / 2, legendWidth, 0, maxElevation); //mappa entro intervallo tra 0 - 7000
             const lightRed = color("#ff9b7cff");
             const darkRed = color("#8c0a0aff");
-            const ratio = map(i, legendWidth / 2, legendWidth, 0, 1);
-            c = lerpColor(lightRed, darkRed, ratio);
+            const ratio = map(i, legendWidth / 2, legendWidth, 0, 1); //mappa entro intervallo 0 - 1
+            c = lerpColor(lightRed, darkRed, ratio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
         }
 
         stroke(c);
         line(xPos, barY, xPos, barY + barHeight);
     }
     
-    // Etichette Numeriche
-    textStyle(NORMAL);
+    noStroke();
+
+    textStyle(NORMAL); //dati legenda
     textSize(10);
     textAlign(LEFT, CENTER);
     text("-6000m", legendX + 5, barY + barHeight + 15);
@@ -329,7 +339,4 @@ function drawUIElements() {
     textAlign(RIGHT, CENTER);
     text("7000m", legendX + legendWidth - 5, barY + barHeight + 15);
 
-    // Ripristina lo stile del testo
-    textStyle(NORMAL);
-    noStroke();
 }
