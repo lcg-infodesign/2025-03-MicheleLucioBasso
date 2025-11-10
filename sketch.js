@@ -13,6 +13,12 @@ let hoveredVolcano = null; //x memorizzare vulcano su cui si trova mouse
 
 let mapX, mapY, mapWidth, mapHeight; //posizione e dimensione mappa proporzionate alla finestra
 
+let legendCategoryX, legendCategoryY, legendCategoryWidth, legendCategoryHeight; //variabili per posizione e dimensione legenda Type Category
+let legendCategoryMargin = 50; //margine sotto legenda Elevation
+let activeLegend = 'Elevation'; //x tracciare legenda attiva, di default 'Elevation' (Stroke giallo)
+let categoryColors = {}; //array x memorizzare colori di ogni categoria di Type Category
+let categoryPalette = ['#f44336', '#ff9800', '#4caf50', '#2196f3', '#9c27b0', '#ffeb3b', '#795548', '#00bcd4']; //colori legenda Type Category
+
 function preload() {
 
   table = loadTable("volcanoes-2025-10-27 - Es.3 - Original Data.csv", "csv", "header");
@@ -33,6 +39,17 @@ function setup() {
   maxLat = 90;
 
   console.log("Dati caricati, numero di righe:", table.getRowCount());
+
+  let uniqueCategories = table.getColumn('TypeCategory').filter((v, i, a) => a.indexOf(v) === i && v !== ''); //trova Type Categories uniche
+
+  uniqueCategories.sort(); //ordina categorie x coerenza assegnazione colore
+
+  for (let i = 0; i < uniqueCategories.length; i++) {
+
+    let category = uniqueCategories[i];
+    categoryColors[category] = categoryPalette[i % categoryPalette.length]; //assegna colore ciclicamente dalla palette
+
+  }
 
 }
 
@@ -65,6 +82,22 @@ function calculateMapDimensions() {
 
             mapX = mapLeftMargin; //coordinata X mappa
             mapY = (windowHeight - mapHeight) / 2 + 20; //coordinata Y mappa
+            
+            //calcolo posizione e dimensioni legenda type category
+            const legendWidth = 150; //larghezza base legenda Elevation
+            const titleHeight = 30 + 2 * 15; //altezza titolo superiore
+            const legendY_Elevation = 25 + titleHeight; //posizione Y legenda Elevation
+            const elevationRectHeight = 110; // altezza rettangolo Elevation 
+
+            legendCategoryX = windowWidth - legendWidth - 40; //stessa X di Elevation
+            legendCategoryY = legendY_Elevation + elevationRectHeight + legendCategoryMargin; //posizione Y = Y di Elevation + Altezza Elevation + Margine
+            legendCategoryWidth = legendWidth; 
+            
+            //calcola altezza necessaria in base a numero categorie
+            const lineHeight = 18; 
+            const numCategories = Object.keys(categoryColors).length;
+            // Altezza: 10px(margine sup) + Title (16px) + 18px(spazio) + Legend (10px) + 18px(spazio) + righe Categorie (numCategories * lineHeight) + 10px(margine inf)
+            legendCategoryHeight = (3 + numCategories) * lineHeight + 40; //x stimare l'altezza: 3 righe fisse + righe variabili + margine extra (40px)
 
         }
 
@@ -89,8 +122,8 @@ function draw() {
     const name = row.getString("Volcano Name");
     const country = row.getString("Country");
     const type = row.getString("Type");
-    const typeCategory = row.getString("TypeCategory");
-    const status = row.getString("Status");
+    const typeCategory = row.getString("TypeCategory"); // Legge la Type Category
+    const status = row.getString("Status"); 
     const lastEruption = row.getString("Last Known Eruption");
 
     const x = map(lon, minLon, maxLon, mapX, mapX - 18 + mapWidth); //converto coordinate geografiche in coordinate pixel con funzione map
@@ -98,21 +131,29 @@ function draw() {
 
     let volcanoColor;
 
-    //mappatura colori, basata su altitudine (vd. lgenda)
-    if (elevation >= 0) { //vulcani con altezza positiva (sfumatura da rosso chiaro a rosso scuro)
+    //colore in base a legenda attiva
+    if (activeLegend === 'Elevation') { //se attiva legenda Elevation, usa logica Elevation
+        //mappatura colori, basata su altitudine (vd. lgenda)
+        if (elevation >= 0) { //vulcani con altezza positiva (sfumatura da rosso chiaro a rosso scuro)
 
-      const lightRed = color("#ff9b7cff");
-      const darkRed = color("#8c0a0aff");
-      const colorRatio = map(elevation, 0, maxElevation, 0, 1, true); //true costringe valore rimappato entro l'intervallo 0 - 1
-      volcanoColor = lerpColor(lightRed, darkRed, colorRatio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
+          const lightRed = color("#ff9b7cff");
+          const darkRed = color("#8c0a0aff");
+          const colorRatio = map(elevation, 0, maxElevation, 0, 1, true); //true costringe valore rimappato entro l'intervallo 0 - 1
+          volcanoColor = lerpColor(lightRed, darkRed, colorRatio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
 
-    } else { //vulcani con altezza negativa (sfumatura da blu chiaro a blu scuro)
+        } else { //vulcani con altezza negativa (sfumatura da blu chiaro a blu scuro)
 
-      const lightBlue = color("#7cd1ffff");
-      const darkBlue = color("#221ba0ff");
-      const colorRatio = map(elevation, minElevation, 0, 0, 1, true); //true costringe valore rimappato entro l'intervallo 0 - 1
-      volcanoColor = lerpColor(darkBlue, lightBlue, colorRatio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
-      
+          const lightBlue = color("#7cd1ffff");
+          const darkBlue = color("#221ba0ff");
+          const colorRatio = map(elevation, minElevation, 0, 0, 1, true); //true costringe valore rimappato entro l'intervallo 0 - 1
+          volcanoColor = lerpColor(darkBlue, lightBlue, colorRatio); //lerpColor() crea sfumatura tra due colori (primi 2 argomenti), in base al 3° argomento (valore min = 0, max = 1) per questo ho mappato in intervallo 0 - 1
+          
+        }
+    } else if (activeLegend === 'Type category') { //se attiva legenda Type Category, usa colore mappato
+        
+        //colora in basea type cateogru
+        volcanoColor = categoryColors[typeCategory] ? color(categoryColors[typeCategory]) : color(255, 255, 255, 150); 
+
     }
 
     //interazione minima con mouse quando vado sul singolo pallino, calcolo distanza tra posizione mouse e centro pallino
@@ -146,6 +187,8 @@ function draw() {
 
   drawUIElements(); //diesegno titolo ed legenda elevation
   
+  drawTypeCategoryLegend();
+
   //tooltip
   if (hoveredVolcano) {
 
@@ -172,6 +215,7 @@ function draw() {
 function windowResized() { //funzione responsiveness
 
   resizeCanvas(windowWidth, windowHeight); //ricalcola dimensioni canvas quando finestra ridimensionata
+  calculateMapDimensions(); //ricalcola posizioni elementi UI
 
 }
 
@@ -265,7 +309,7 @@ function drawTooltip(x, y, content) { //tooltip giallo
 
 }
 
-//funzione che disegna elementi UI
+//funzione che disegna elementi UI (Legenda Elevation)
 function drawUIElements() {
 
     const titleText = "Volcanoes on the Earth"; //titolo
@@ -288,8 +332,21 @@ function drawUIElements() {
     const legendX = windowWidth - legendWidth - 40;
     const legendY = 25 + titleHeight; //sotto titolo con piccolo margine
     
+    if (activeLegend === 'Elevation') { //applica stroke solo se 'Elevation' è legenda attiva
+
+        stroke("#fffb00ff");
+        strokeWeight(3);
+
+    } else {
+
+        noStroke();
+
+    }
+    
     fill("#412f09ff"); //sfondo legenda
     rect(legendX, legendY, legendWidth, legendHeight, 10); //angoli arrotondati
+    
+    noStroke(); //toglie stroke x resto disegno
 
     fill("#ffffff"); //titolo legenda
     textSize(16);
@@ -343,4 +400,97 @@ function drawUIElements() {
     textAlign(RIGHT, CENTER);
     text("7000m", legendX + legendWidth - 5, barY + barHeight + 15);
 
+}
+
+function drawTypeCategoryLegend() {
+    
+    //variabili ricalcolate per categoria
+    const rectX = legendCategoryX;
+    const rectY = legendCategoryY;
+    const rectW = legendCategoryWidth;
+    const rectH = legendCategoryHeight;
+    const padding = 10; //margine interno
+    const lineHeight = 18; //altezza riga testo
+    let currentY = rectY + padding; //inizia dopo margine superiore
+
+    if (activeLegend === 'Type category') { //applica stroke solo se type category è la legenda attiva
+
+        stroke("#fffb00ff");
+        strokeWeight(3);
+
+    } else {
+
+        noStroke();
+
+    }
+
+    fill("#412f09ff");
+    rect(rectX, rectY, rectW, rectH, 10); //angoli arrotondati
+    
+    noStroke(); //toglie stroke x resto disegno
+
+    fill(255);
+    textSize(16);
+    textAlign(CENTER, TOP);
+    textStyle(BOLD);
+    text("Type category", rectX + rectW / 2, currentY);
+    currentY += 25; //sposta Y x testo successivo
+    
+    textSize(12);
+    textAlign(LEFT, TOP);
+    textStyle(NORMAL);
+    text("Legend", rectX + padding, currentY);
+    currentY += 18; //sposta Y x categorie
+
+    //ciclo itera su tutte categorie
+    for (let category in categoryColors) {
+
+        let catColor = categoryColors[category];
+        
+        fill(catColor);//quadrato colorato legenda
+        rect(rectX + padding, currentY, 12, 12);
+        
+        fill("#ffffff"); //testo legenda
+        textSize(12);
+        textAlign(LEFT, TOP);
+        textStyle(NORMAL);
+        text(category, rectX + padding + 15, currentY); //15px di spazio dopo il quadrato
+        
+        currentY += lineHeight; //passa a riga successiva
+    }
+}
+
+function mouseClicked() {
+    
+    const legendWidth = 150; 
+    const legendHeight = 110;
+    const legendX = windowWidth - legendWidth - 40;
+    const titleHeight = 30 + 2 * 15;
+    const legendY_Elevation = 25 + titleHeight;
+
+    //coordinate rettangolo legenda elevation
+    const elevationRectX = legendX;
+    const elevationRectY = legendY_Elevation;
+    const elevationRectWidth = legendWidth;
+    const elevationRectHeight = legendHeight;
+    
+    //coordinate rettangolo type category
+    const categoryRectX = legendCategoryX;
+    const categoryRectY = legendCategoryY;
+    const categoryRectW = legendCategoryWidth;
+    const categoryRectH = legendCategoryHeight;
+
+    //controlla se click avvenuto su legenda elevation
+    if (mouseX >= elevationRectX && mouseX <= elevationRectX + elevationRectWidth &&
+        mouseY >= elevationRectY && mouseY <= elevationRectY + elevationRectHeight) {
+        
+        activeLegend = 'Elevation'; //imposta elevation attiva quando si apre sito
+
+    } 
+    //controlla se click avvenuto su legenda type category
+    else if (mouseX >= categoryRectX && mouseX <= categoryRectX + categoryRectW &&
+             mouseY >= categoryRectY && mouseY <= categoryRectY + categoryRectH) {
+        
+        activeLegend = 'Type category'; //imposta type category attiva
+    }
 }
