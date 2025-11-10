@@ -40,14 +40,18 @@ function setup() {
 
   console.log("Dati caricati, numero di righe:", table.getRowCount());
 
-  let uniqueCategories = table.getColumn('TypeCategory').filter((v, i, a) => a.indexOf(v) === i && v !== ''); //trova Type Categories uniche
-
+  let uniqueCategories = table.getColumn('TypeCategory').filter((v, i, a) => a.indexOf(v) === i && v !== ''); //recupera tutti valori presenti in colonna csv TypeCategory
+                                                                                                              //mantiene solo valore v se suo 1° indice di apparizione (a.indexOf(v)) nell'array completo (a) è = a suo indice attuale (i)
+                                                                                                              //&& v !== '' assicura ignorare righe che hanno valore vuoto ('') nella colonna
+                                                                                                              //uniqueCategories diventa array pulito contenente solo nomi tutte categorie vulcani
   uniqueCategories.sort(); //ordina categorie x coerenza assegnazione colore
+                           // ordina nomi categorie in ordine alfabetico
 
-  for (let i = 0; i < uniqueCategories.length; i++) {
+  for (let i = 0; i < uniqueCategories.length; i++) { //itera su ogni elemento nell'array uniqueCategories                                                    
 
-    let category = uniqueCategories[i];
+    let category = uniqueCategories[i]; //assegna nome categoria corrente a variabile category
     categoryColors[category] = categoryPalette[i % categoryPalette.length]; //assegna colore ciclicamente dalla palette
+                                                                            // % calcola resto divisione tra indice corrente (i) e numero totale colori palette
 
   }
 
@@ -58,9 +62,9 @@ function calculateMapDimensions() {
             
             const verticalMargin = 50; //margine superiore e inferiore
             const mapLeftMargin = 80; //margine fisso a sinistra
-            const reservedRightSpace = 220; //spazio riservato a destra per legenda
+            const reservedRightSpace = 220; //spazio riservato a destra x legenda
             
-            const availableWidth = windowWidth - mapLeftMargin - reservedRightSpace; //dimensioni massime disponibili per mappa
+            const availableWidth = windowWidth - mapLeftMargin - reservedRightSpace; //dimensioni massime disponibili x mappa
             const availableHeight = windowHeight - 2 * verticalMargin;
 
             const mapRatio = 2.0; //proporzioni mappa del mondo (1/2 - 360 gradi longitudine / 180 gradi latitudine)
@@ -332,7 +336,7 @@ function drawUIElements() {
     const legendX = windowWidth - legendWidth - 40;
     const legendY = 25 + titleHeight; //sotto titolo con piccolo margine
     
-    if (activeLegend === 'Elevation') { //applica stroke solo se 'Elevation' è legenda attiva
+    if (activeLegend === 'Elevation') { //applica stroke solo se elevatioe è legenda attiva
 
         stroke("#fffb00ff");
         strokeWeight(3);
